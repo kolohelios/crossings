@@ -3,57 +3,60 @@ use bevy::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(HelloPlugin)
+        .add_plugin(CrossingsPlugin)
         .run();
 }
 
-#[derive(Component)]
-struct Person;
+pub struct CrossingsPlugin;
 
-#[derive(Component)]
-struct Name(String);
-
-fn add_people(mut commands: Commands) {
-    commands.spawn().insert(Person).insert(Name("Elaina Proctor".to_string()));
-    commands.spawn().insert(Person).insert(Name("Renzo Hume".to_string()));
-    commands.spawn().insert(Person).insert(Name("Zayna Nieves".to_string()));
-}
-
-struct GreetTimer(Timer);
-
-fn greet_people(time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Name, With<Person>>) {
-    // update our timer with the time elapsed since the last update
-    // if that caused the timer to finish, we say hello to everyone 
-    if timer.0.tick(time.delta()).just_finished() {
-        for name in query.iter() {
-            println!("hello {}!", name.0);
-        }
-    }
-}
-
-pub struct HelloPlugin;
-
-impl Plugin for HelloPlugin {
+impl Plugin for CrossingsPlugin {
     fn build(&self, app: &mut App) {
-        // the reason we call from_seconds with the true flag is to make the timer repeat itself
-        app.insert_resource(GreetTimer(Timer::from_seconds(2.0, true)))
-            .add_startup_system(add_people)
-            .add_startup_system(setup)
-            .add_system(greet_people);
+        app.add_startup_system(setup)
+            .add_system(keyboard_input_system);
     }
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-    for x in 0..10 {
-        commands.spawn_bundle(SpriteBundle {
-        sprite: Sprite {
-            color: Color::rgb(0.05 * x as f32, 0.25, 0.75),
-            custom_size: Some(Vec2::new(50.0, 50.0)),
-            ..default()
-        },
-        transform: Transform::from_xyz(50.0 * x as f32, 0., 0.),
-        ..default()
-    });
+    let mut camera = OrthographicCameraBundle::new_2d();
+    camera.transform = Transform::from_translation(Vec3::new(0.0, 0.0, 0.0));
+    commands.spawn_bundle(camera);
+    for x in -50..50 {
+        for y in -50..50 {
+            commands.spawn_bundle(SpriteBundle {
+                sprite: Sprite {
+                    color: Color::rgb(0.01 * x as f32, 0.01 * y as f32, 0.75),
+                    custom_size: Some(Vec2::new(25.0, 25.0)),
+                    ..default()
+                },
+                transform: Transform::from_xyz(25.0 * x as f32, 25.0 * y as f32, 0.),
+                ..default()
+            });
+        }
+    }
+}
+
+fn keyboard_input_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+) {
+    if keyboard_input.pressed(KeyCode::A) {
+        for mut transform in camera_query.iter_mut() {
+            transform.translation.x -= 100.0;
+        }
+    }
+    if keyboard_input.pressed(KeyCode::S) {
+        for mut transform in camera_query.iter_mut() {
+            transform.translation.y += 100.0;
+        }
+    }
+    if keyboard_input.pressed(KeyCode::W) {
+        for mut transform in camera_query.iter_mut() {
+            transform.translation.y -= 100.0;
+        }
+    }
+    if keyboard_input.pressed(KeyCode::D) {
+        for mut transform in camera_query.iter_mut() {
+            transform.translation.x += 100.0;
+        }
     }
 }

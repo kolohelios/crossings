@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 # remove dynamic flag when distributing, or include `libbevy_dylib`
+# bevy = { version = "0.7.0"}
 bevy = { version = "0.7.0", features = ["dynamic"] }
 
 # NOTE: For maximum performance, build using a nightly compiler
