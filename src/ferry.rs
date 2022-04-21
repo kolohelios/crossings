@@ -1,9 +1,17 @@
 use machine::*;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum FerryType {
+    Id { value: i8 },
+    Void,
+}
+
 machine!(
     #[derive(Clone, Debug, PartialEq)]
     enum Ferry {
-        Docked,
+        Docked {
+            ferry_type: FerryType,
+        },
         Loading,
         Departing,
         Crossing,
@@ -18,8 +26,9 @@ impl Docked {
 
 pub mod ferry {
     use super::*;
+
     pub fn create_ferry() -> Ferry {
-        let f = Ferry::Docked(Docked {});
+        let f = Ferry::Docked(Docked { ferry_type: FerryType::Void });
         f
     }
 }
@@ -30,6 +39,6 @@ mod tests {
     #[test]
     fn test_ferry() {
         let mut f = ferry::create_ferry();
-        assert_eq!(f, Ferry::docked());
+        assert_eq!(f, Ferry::docked(FerryType::Void));
     }
 }
