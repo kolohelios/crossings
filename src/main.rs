@@ -1,6 +1,12 @@
-use bevy::{prelude::*, winit::WinitSettings};
+use bevy::{
+    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+    winit::WinitSettings,
+};
+use chrono::{DateTime, Utc};
 
 mod ferry;
+mod geo;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -34,8 +40,8 @@ fn button_system(
 
 fn main() {
     App::new()
-        // .insert_resource(WinitSettings::desktop_app())
         .add_plugins(DefaultPlugins)
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(CrossingsPlugin)
         .run();
 }
@@ -45,8 +51,44 @@ pub struct CrossingsPlugin;
 impl Plugin for CrossingsPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup)
+            // .insert_resource(WinitSettings::desktop_app())
+            .add_startup_system(add_ferries)
             .add_system(keyboard_input_system)
-            .add_system(button_system);
+            .add_system(button_system)
+            .add_system(text_update_system)
+            .add_system(text_color_system)
+            .add_system(ferry_status);
+    }
+}
+
+// A unit struct to help identify the FPS UI component, since there may be many Text components
+#[derive(Component)]
+struct FpsText;
+
+// A unit struct to help identify the color-changing Text component
+#[derive(Component)]
+struct ColorText;
+
+#[derive(Component)]
+struct Ferry;
+
+#[derive(Component, Debug)]
+struct Machine(ferry::Ferry);
+
+fn add_ferries(mut commands: Commands) {
+    let ferry_type = ferry::FerryType {
+        id: 0,
+        passenger_capacity: 2500,
+        car_length_capacity_feet: 0,
+        speed_knots: 18.0,
+    };
+    let mut f = ferry::ferry::create_ferry(ferry_type);
+    commands.spawn().insert(Ferry).insert(Machine(f));
+}
+
+fn ferry_status(query: Query<&Machine, With<Ferry>>) {
+    for machine in query.iter() {
+        println!("{:?}", machine);
     }
 }
 
@@ -56,7 +98,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(camera);
 
     let sprite_size = 50.0;
-    let canvas_size = 30;
+    let canvas_size = 15;
 
     for x in -1 * canvas_size..canvas_size {
         for y in -1 * canvas_size..canvas_size {
@@ -103,17 +145,80 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ..default()
             });
         });
+
+    commands
+        .spawn_bundle(TextBundle {
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                position_type: PositionType::Absolute,
+                position: Rect {
+                    bottom: Val::Px(5.0),
+                    right: Val::Px(15.0),
+                    ..default()
+                },
+                ..default()
+            },
+            // Use the `Text::with_section` constructor
+            text: Text::with_section(
+                // Accepts a `String` or any type that converts into a `String`, such as `&str`
+                "hello\nbevy!",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 100.0,
+                    color: Color::WHITE,
+                },
+                // Note: You can use `Default::default()` in place of the `TextAlignment`
+                TextAlignment {
+                    horizontal: HorizontalAlign::Center,
+                    ..default()
+                },
+            ),
+            ..default()
+        })
+        .insert(ColorText);
+    // Rich text with multiple sections
+    commands
+        .spawn_bundle(TextBundle {
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                ..default()
+            },
+            // Use `Text` directly
+            text: Text {
+                // Construct a `Vec` of `TextSection`s
+                sections: vec![
+                    TextSection {
+                        value: "FPS: ".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::WHITE,
+                        },
+                    },
+                    TextSection {
+                        value: "".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                            font_size: 60.0,
+                            color: Color::GOLD,
+                        },
+                    },
+                ],
+                ..default()
+            },
+            ..default()
+        })
+        .insert(FpsText);
 }
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
-    mut camera_query: Query<&mut Transform, With<Camera>>,
+    mut camera_query: Query<&mut Transform, With<bevy::render::camera::Camera2d>>,
 ) {
     let translation_distance = 25.0;
     if keyboard_input.pressed(KeyCode::A) {
         for mut transform in camera_query.iter_mut() {
-            transform.translation.x -= translation_distance;
-            println!("{}", transform.translation.x);
+            transform.translation.x += translation_distance;
         }
     }
     if keyboard_input.pressed(KeyCode::S) {
@@ -128,7 +233,32 @@ fn keyboard_input_system(
     }
     if keyboard_input.pressed(KeyCode::D) {
         for mut transform in camera_query.iter_mut() {
-            transform.translation.x += translation_distance;
+            transform.translation.x -= translation_distance;
         }
+    }
+}
+
+fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
+    for mut text in query.iter_mut() {
+        if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(average) = fps.average() {
+                // Update the value of the second section
+                text.sections[1].value = format!("{:.2}", average);
+            }
+        }
+    }
+}
+
+fn text_color_system(time: Res<Time>, mut query: Query<&mut Text, With<ColorText>>) {
+    for mut text in query.iter_mut() {
+        let seconds = time.seconds_since_startup() as f32;
+        // We used the `Text::with_section` helper method, but it is still just a `Text`,
+        // so to update it, we are still updating the one and only section
+        text.sections[0].style.color = Color::Rgba {
+            red: (1.25 * seconds).sin() / 2.0 + 0.5,
+            green: (0.75 * seconds).sin() / 2.0 + 0.5,
+            blue: (0.50 * seconds).sin() / 2.0 + 0.5,
+            alpha: 1.0,
+        };
     }
 }

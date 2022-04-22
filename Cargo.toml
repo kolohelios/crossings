@@ -10,8 +10,9 @@ edition = "2021"
 # remove dynamic flag when distributing, or include `libbevy_dylib`
 # bevy = { version = "0.7.0"}
 bevy = { version = "0.7.0", features = ["dynamic"] }
-machine = "0.3.0"
-rand = "0.8.5"
+machine = "0.3"
+chrono = "0.4"
+geo = "0.20"
 
 # NOTE: For maximum performance, build using a nightly compiler
 # If you are using rust stable, remove the "-Zshare-generics=y" below.
