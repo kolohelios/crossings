@@ -1,3 +1,5 @@
+use std::fs;
+
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -6,7 +8,6 @@ use bevy::{
 use chrono::{DateTime, Utc};
 
 mod ferry;
-mod geo;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -88,7 +89,7 @@ fn add_ferries(mut commands: Commands) {
 
 fn ferry_status(query: Query<&Machine, With<Ferry>>) {
     for machine in query.iter() {
-        println!("{:?}", machine);
+        // println!("{:?}", machine);
     }
 }
 
@@ -216,24 +217,39 @@ fn keyboard_input_system(
     mut camera_query: Query<&mut Transform, With<bevy::render::camera::Camera2d>>,
 ) {
     let translation_distance = 25.0;
-    if keyboard_input.pressed(KeyCode::A) {
+    let scale_amount = 0.1;
+    if keyboard_input.pressed(KeyCode::A) || keyboard_input.pressed(KeyCode::Left) {
         for mut transform in camera_query.iter_mut() {
             transform.translation.x += translation_distance;
         }
     }
-    if keyboard_input.pressed(KeyCode::S) {
+    if keyboard_input.pressed(KeyCode::S) || keyboard_input.pressed(KeyCode::Down) {
         for mut transform in camera_query.iter_mut() {
             transform.translation.y += translation_distance;
         }
     }
-    if keyboard_input.pressed(KeyCode::W) {
+    if keyboard_input.pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {
         for mut transform in camera_query.iter_mut() {
             transform.translation.y -= translation_distance;
         }
     }
-    if keyboard_input.pressed(KeyCode::D) {
+    if keyboard_input.pressed(KeyCode::D) || keyboard_input.pressed(KeyCode::Right) {
         for mut transform in camera_query.iter_mut() {
             transform.translation.x -= translation_distance;
+        }
+    }
+    if keyboard_input.pressed(KeyCode::Equals) {
+        for mut transform in camera_query.iter_mut() {
+            transform.scale.x += scale_amount;
+            transform.scale.y += scale_amount;
+
+        }
+    }
+    if keyboard_input.pressed(KeyCode::Minus) {
+        for mut transform in camera_query.iter_mut() {
+            transform.scale.x -= scale_amount;
+            transform.scale.y -= scale_amount;
+
         }
     }
 }
