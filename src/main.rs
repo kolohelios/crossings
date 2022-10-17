@@ -1,13 +1,13 @@
-use std::fs;
+// use std::fs;
 
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    winit::WinitSettings,
+    // winit::WinitSettings,
 };
-use chrono::{DateTime, Utc};
+// use chrono::{DateTime, Utc};
 
-mod ferry;
+mod ferry_state;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -74,16 +74,10 @@ struct ColorText;
 struct Ferry;
 
 #[derive(Component, Debug)]
-struct Machine(ferry::Ferry);
+struct Machine(ferry_state::FerryState);
 
 fn add_ferries(mut commands: Commands) {
-    let ferry_type = ferry::FerryType {
-        id: 0,
-        passenger_capacity: 2500,
-        car_length_capacity_feet: 0,
-        speed_knots: 18.0,
-    };
-    let mut f = ferry::ferry::create_ferry(ferry_type);
+    let mut f = ferry_state::ferry_state::create_ferry_state();
     commands.spawn().insert(Ferry).insert(Machine(f));
 }
 
