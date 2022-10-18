@@ -12,6 +12,7 @@ edition = "2021"
 bevy = { version = "0.7.0", features = ["dynamic"] }
 machine = "0.3"
 chrono = "0.4"
+libm = "0.1"
 
 # NOTE: For maximum performance, build using a nightly compiler
 # If you are using rust stable, remove the "-Zshare-generics=y" below.
