@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 # remove dynamic flag when distributing, or include `libbevy_dylib`
-# bevy = { version = "0.7.0"}
-bevy = { version = "0.7.0", features = ["dynamic"] }
+# bevy = { version = "0.8.0"}
+bevy = { version = "0.8.0", features = ["dynamic"] }
 machine = "0.3"
 chrono = "0.4"
 libm = "0.1"
