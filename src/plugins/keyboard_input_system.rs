@@ -1,6 +1,4 @@
-use bevy::{
-    prelude::*,
-};
+use bevy::prelude::*;
 
 pub fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,

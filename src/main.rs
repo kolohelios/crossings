@@ -7,7 +7,8 @@ use bevy::{
 };
 // use chrono::{DateTime, Utc};
 
-mod ferry_state;
+mod ferry;
+// mod ferry_state;
 mod nav;
 mod plugins;
 
@@ -57,12 +58,12 @@ impl Plugin for CrossingsPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup)
             // .insert_resource(WinitSettings::desktop_app())
-            .add_startup_system(add_ferries)
+            // .add_startup_system(add_ferries)
             .add_system(keyboard_input_system)
             .add_system(button_system)
             .add_system(text_update_system)
-            .add_system(text_color_system)
-            .add_system(ferry_status);
+            .add_system(text_color_system);
+            // .add_system(ferry_status);
     }
 }
 
@@ -74,22 +75,22 @@ struct FpsText;
 #[derive(Component)]
 struct ColorText;
 
-#[derive(Component)]
-struct Ferry;
+// #[derive(Component)]
+// struct Ferry;
 
-#[derive(Component, Debug)]
-struct Machine(ferry_state::FerryState);
+// #[derive(Component, Debug)]
+// struct Machine(ferry_state::FerryState);
 
-fn add_ferries(mut commands: Commands) {
-    let f = ferry_state::ferry_state::create_ferry_state();
-    commands.spawn().insert(Ferry).insert(Machine(f));
-}
+// fn add_ferries(mut commands: Commands) {
+//     let f = ferry_state::ferry_state::create_ferry_state();
+//     commands.spawn().insert(Ferry).insert(Machine(f));
+// }
 
-fn ferry_status(query: Query<&Machine, With<Ferry>>) {
-    for machine in query.iter() {
-        println!("{:?}", machine);
-    }
-}
+// fn ferry_status(query: Query<&Machine, With<Ferry>>) {
+//     for machine in query.iter() {
+//         println!("{:?}", machine);
+//     }
+// }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut camera = Camera2dBundle::default();
@@ -203,7 +204,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .insert(FpsText);
 }
-
 
 fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
     for mut text in query.iter_mut() {

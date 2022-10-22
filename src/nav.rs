@@ -58,7 +58,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_get_distance() {
-        let mut calc = Navigation::get_distance_in_km(20.0, 300);
+        let calc = Navigation::get_distance_in_km(20.0, 300);
         assert_eq!(calc, 3.0866666666666664);
     }
 
