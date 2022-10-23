@@ -1,5 +1,5 @@
-use std::time::Duration;
 use bevy::{ecs::event::Events, prelude::*, time::Time};
+use std::time::Duration;
 
 #[derive(Component, Debug)]
 pub struct Ferry {
@@ -18,13 +18,24 @@ struct TicksSinceStart {
 #[derive(Component, Debug)]
 struct FerryState {
     status: String,
+    passengers: i16,
+    max_passengers: i16,
 }
 
 #[derive(Component)]
 struct Loaded;
 
 fn spawn_ferry(mut commands: Commands) {
-    commands.spawn().insert(Ferry { name: "Wenatchee".to_string() } ).insert(FerryState { status: "docked".to_string() });
+    commands
+        .spawn()
+        .insert(Ferry {
+            name: "Wenatchee".to_string(),
+        })
+        .insert(FerryState {
+            status: "docked".to_string(),
+            passengers: 0,
+            max_passengers: 100,
+        });
 }
 
 fn manage_ticks(mut timer: ResMut<Clock>, mut ticks: ResMut<TicksSinceStart>, time: Res<Time>) {
@@ -44,6 +55,28 @@ fn prepare_to_load(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState
     }
 }
 
+fn load_ferry(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState>) {
+    // if ticks.value > 0 {
+    for mut ferry_state in query.iter_mut() {
+        if ferry_state.status == "loading".to_string() && ferry_state.passengers < ferry_state.max_passengers {
+            ferry_state.passengers += 100;
+        }
+    }
+    // }
+}
+
+fn prepare_to_cross(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState>) {
+    // if ticks.value > 0 {
+        for mut ferry_state in query.iter_mut() {
+            if ferry_state.status == "loading".to_string()
+                && ferry_state.passengers == ferry_state.max_passengers
+            {
+                ferry_state.status = "crossing".to_string();
+            }
+        }
+    // }
+}
+
 #[test]
 fn spawn_ferry_using_input_resource() {
     // Setup app
@@ -57,7 +90,9 @@ fn spawn_ferry_using_input_resource() {
 
     // Add our systems
     app.add_startup_system(spawn_ferry);
-    app.add_system(manage_ticks.before(prepare_to_load));
+    app.add_system(manage_ticks);
+    app.add_system(load_ferry);
+    app.add_system(prepare_to_cross);
     app.add_system(prepare_to_load);
 
     // Run systems
@@ -65,7 +100,16 @@ fn spawn_ferry_using_input_resource() {
 
     // Check resulting changes, one entity has been spawned with `Ferry` component that should be docked
     assert_eq!(app.world.query::<&Ferry>().iter(&app.world).len(), 1);
-    assert_eq!(app.world.query::<&FerryState>().iter(&app.world).take(1).next().unwrap().status, "docked".to_string());
+    assert_eq!(
+        app.world
+            .query::<&FerryState>()
+            .iter(&app.world)
+            .take(1)
+            .next()
+            .unwrap()
+            .status,
+        "docked".to_string()
+    );
 
     // Run systems
     app.update();
@@ -83,5 +127,50 @@ fn spawn_ferry_using_input_resource() {
 
     // Check resulting changes, only one entity has been spawned with `Ferry` component that should be loading
     assert_eq!(app.world.query::<&Ferry>().iter(&app.world).len(), 1);
-    assert_eq!(app.world.query::<&FerryState>().iter(&app.world).take(1).next().unwrap().status, "loading".to_string());
+    assert_eq!(
+        app.world
+            .query::<&FerryState>()
+            .iter(&app.world)
+            .take(1)
+            .next()
+            .unwrap()
+            .status,
+        "loading".to_string()
+    );
+
+    // Simulate that 1s have passed
+    let mut time = app.world.resource_mut::<Time>();
+    let last_update = time.last_update().unwrap();
+    time.update_with_instant(last_update + Duration::from_millis(1001));
+
+    // Run systems
+    app.update();
+
+    assert_eq!(app.world.query::<&Ferry>().iter(&app.world).len(), 1);
+    assert_eq!(
+        app.world
+            .query::<&FerryState>()
+            .iter(&app.world)
+            .take(1)
+            .next()
+            .unwrap()
+            .passengers,
+        100
+    );
+
+    // Run systems
+    app.update();
+
+    // Check resulting changes, only one entity has been spawned with `Ferry` component that should be loading
+    assert_eq!(app.world.query::<&Ferry>().iter(&app.world).len(), 1);
+    assert_eq!(
+        app.world
+            .query::<&FerryState>()
+            .iter(&app.world)
+            .take(1)
+            .next()
+            .unwrap()
+            .status,
+        "crossing".to_string()
+    );
 }

@@ -63,7 +63,6 @@ impl Plugin for CrossingsPlugin {
             .add_system(button_system)
             .add_system(text_update_system)
             .add_system(text_color_system);
-            // .add_system(ferry_status);
     }
 }
 
