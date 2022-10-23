@@ -1,98 +1,74 @@
-use bevy::{ecs::event::Events, prelude::*, time::Time};
-use std::time::Duration;
+use bevy::prelude::*;
+
+#[derive(Default)]
+pub struct TicksSinceStart {
+    value: u64,
+}
 
 #[derive(Component, Debug)]
 pub struct Ferry {
     pub name: String,
 }
 
-#[derive(Default)]
-struct Clock(Timer);
-
-// We are decoupling the RTC from game time, which is based on ticks; this will give us more flexibility later
-#[derive(Default)]
-struct TicksSinceStart {
-    value: u64,
-}
-
 #[derive(Component, Debug)]
 struct FerryState {
     status: String,
-    passengers: i16,
-    max_passengers: i16,
-}
-
-#[derive(Component)]
-struct Loaded;
-
-fn spawn_ferry(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert(Ferry {
-            name: "Wenatchee".to_string(),
-        })
-        .insert(FerryState {
-            status: "docked".to_string(),
-            passengers: 0,
-            max_passengers: 100,
-        });
-}
-
-fn manage_ticks(mut timer: ResMut<Clock>, mut ticks: ResMut<TicksSinceStart>, time: Res<Time>) {
-    if timer.0.tick(time.delta()).just_finished() {
-        println!("Ticking");
-        ticks.value += 1;
-    }
+    passengers: u16,
+    max_passengers: u16,
+    next_departure: u64,
 }
 
 fn prepare_to_load(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState>) {
-    if ticks.value > 0 {
-        for mut ferry_state in query.iter_mut() {
-            if ferry_state.status == "docked".to_string() {
-                ferry_state.status = "loading".to_string();
-            }
+    for mut ferry_state in query.iter_mut() {
+        if ferry_state.status == "docked".to_string() && ferry_state.next_departure <= ticks.value {
+            ferry_state.status = "loading".to_string();
         }
     }
 }
 
 fn load_ferry(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState>) {
-    // if ticks.value > 0 {
     for mut ferry_state in query.iter_mut() {
-        if ferry_state.status == "loading".to_string() && ferry_state.passengers < ferry_state.max_passengers {
+        if ferry_state.status == "loading".to_string()
+            && ferry_state.passengers < ferry_state.max_passengers
+        {
             ferry_state.passengers += 100;
         }
     }
-    // }
 }
 
 fn prepare_to_cross(ticks: Res<TicksSinceStart>, mut query: Query<&mut FerryState>) {
-    // if ticks.value > 0 {
-        for mut ferry_state in query.iter_mut() {
-            if ferry_state.status == "loading".to_string()
-                && ferry_state.passengers == ferry_state.max_passengers
-            {
-                ferry_state.status = "crossing".to_string();
-            }
+    for mut ferry_state in query.iter_mut() {
+        if ferry_state.status == "loading".to_string()
+            && ferry_state.passengers == ferry_state.max_passengers
+        {
+            ferry_state.status = "crossing".to_string();
         }
-    // }
+    }
 }
 
 #[test]
-fn spawn_ferry_using_input_resource() {
+fn test_prepare_to_load() {
     // Setup app
     let mut app = App::new();
-    let mut time = Time::default();
-    time.update();
-    app.insert_resource(time);
 
     app.insert_resource(TicksSinceStart { value: 0 });
-    app.insert_resource(Clock(Timer::from_seconds(1.0, true)));
+
+    fn spawn_ferry(mut commands: Commands) {
+        commands
+            .spawn()
+            .insert(Ferry {
+                name: "Wenatchee".to_string(),
+            })
+            .insert(FerryState {
+                status: "docked".to_string(),
+                passengers: 0,
+                max_passengers: 100,
+                next_departure: 1,
+            });
+    }
 
     // Add our systems
     app.add_startup_system(spawn_ferry);
-    app.add_system(manage_ticks);
-    app.add_system(load_ferry);
-    app.add_system(prepare_to_cross);
     app.add_system(prepare_to_load);
 
     // Run systems
@@ -117,10 +93,7 @@ fn spawn_ferry_using_input_resource() {
     // Check resulting changes, no new entity has been spawned
     assert_eq!(app.world.query::<&Ferry>().iter(&app.world).len(), 1);
 
-    // Simulate that 1s have passed
-    let mut time = app.world.resource_mut::<Time>();
-    let last_update = time.last_update().unwrap();
-    time.update_with_instant(last_update + Duration::from_millis(1001));
+    app.insert_resource(TicksSinceStart { value: 1 });
 
     // Run systems
     app.update();
@@ -137,11 +110,32 @@ fn spawn_ferry_using_input_resource() {
             .status,
         "loading".to_string()
     );
+}
 
-    // Simulate that 1s have passed
-    let mut time = app.world.resource_mut::<Time>();
-    let last_update = time.last_update().unwrap();
-    time.update_with_instant(last_update + Duration::from_millis(1001));
+#[test]
+fn test_load_ferry() {
+    // Setup app
+    let mut app = App::new();
+
+    app.insert_resource(TicksSinceStart { value: 0 });
+
+    fn spawn_ferry(mut commands: Commands) {
+        commands
+            .spawn()
+            .insert(Ferry {
+                name: "Wenatchee".to_string(),
+            })
+            .insert(FerryState {
+                status: "loading".to_string(),
+                passengers: 0,
+                max_passengers: 100,
+                next_departure: 1,
+            });
+    }
+
+    // Add our systems
+    app.add_startup_system(spawn_ferry);
+    app.add_system(load_ferry);
 
     // Run systems
     app.update();
@@ -157,6 +151,32 @@ fn spawn_ferry_using_input_resource() {
             .passengers,
         100
     );
+}
+
+#[test]
+fn test_prepare_to_cross() {
+    // Setup app
+    let mut app = App::new();
+
+    app.insert_resource(TicksSinceStart { value: 0 });
+
+    fn spawn_ferry(mut commands: Commands) {
+        commands
+            .spawn()
+            .insert(Ferry {
+                name: "Wenatchee".to_string(),
+            })
+            .insert(FerryState {
+                status: "loading".to_string(),
+                passengers: 100,
+                max_passengers: 100,
+                next_departure: 1,
+            });
+    }
+
+    // Add our systems
+    app.add_startup_system(spawn_ferry);
+    app.add_system(prepare_to_cross);
 
     // Run systems
     app.update();
